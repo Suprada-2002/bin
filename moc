@@ -1,0 +1,61 @@
+#!/bin/sh
+music_db="$MUSICDB"
+mocp_command="mocp -M $XDG_CONFIG_HOME/moc"
+
+startServer(){
+  $mocp_command -S
+  $mocp_command -c
+  $mocp_command -t s
+  $mocp_command -t r -v 50
+}
+
+addEverySong(){
+  $mocp_command -a "$music_db"
+  $mocp_command -p 
+}
+
+addPlaylist(){
+  list=""
+  for name in $(cat "$music_db/$1.txt")
+  do
+    list="$list $music_db/$name"
+  done
+  $mocp_command -a $list
+  $mocp_command -p
+}
+
+addLang(){
+  list=""
+  for name in $(ls -1 "$MUSICDB/$1")
+  do
+    $mocp_command -a "$music_db/$1/$name"
+  done
+  $mocp_command -p
+}
+
+findSong(){
+  tmp="/tmp/playlist_tmp.txt"
+  playlist="$XDG_CONFIG_HOME/moc/playlist.m3u"
+  cat $playlist | grep -v -e "#" > $tmp
+  line=$(cat $tmp | grep -o -e "/.[^\/]*.mp3" | sed -e "s/\///" | dmenu -p "Play Song: " -l 10)
+  line=$(cat $tmp | grep -e "$line")
+  $mocp_command -a $line
+}
+
+while getopts "s a: l: e p v: x n b c d: f" flag
+do
+    case "${flag}" in
+        s) startServer;;
+        a) addPlaylist ${OPTARG};;
+        l) addLang ${OPTARG};;
+        e) addEverySong;;
+        f) findSong;;
+        p) $mocp_command -G;;
+        v) $mocp_command -v ${OPTARG};;
+        x) $mocp_command -x;;
+        n) $mocp_command -f;;
+        b) $mocp_command -r;;
+        c) $mocp_command -c;;
+        d) music_db=${OPTARG};;
+    esac
+done

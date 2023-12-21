@@ -1,0 +1,87 @@
+#!/bin/bash
+getPartition() {
+  line=$(lsblk -o name,label,size,mountpoint | sed -n '1!p' | dmenu -p "Choose Partition: " -l 10)
+  usb_label="$(echo $line | awk '{ print $2 }')"
+  partition=$(echo $line | cut -d' ' -f1 | sed -e 's/─//g' -e 's/├//g' -e 's/└//g')
+}
+
+confirm() {
+  echo "$1"
+  printf "confirm? "
+  read null
+}
+
+mountUsb() {
+  getPartition
+
+  echo $partition $usb_label
+  [ -z "$partition" ] && echo "Empty Partition" && exit
+  [ -z "$usb_label" ] && echo "Empty USB Label" && exit
+
+  confirm "Mount $partition as $usb_label"
+
+  mkdir -p "/media/$usb_label"
+  sudo mount "/dev/$partition" "/media/$usb_label" -o uid=$USER -o gid=$USER
+  if [ $? -eq 0 ]
+  then
+    echo "Mounted $partition as $usb_label"
+  else
+    echo "Mount Failed for $partition"
+    exit
+  fi
+}
+
+dismount() {
+  usb_label=$(ls /media/ | dmenu -p "Choose Label: " -l 10)
+  partition=$(findmnt -n -r -o SOURCE "/media/$usb_label" | head -n 1)
+
+  [ -z "$partition" ] && echo "Empty Partition" && exit
+  [ -z "$usb_label" ] && echo "Empty USB Label" && exit
+
+  confirm "dismount partition $partition mounted as $usb_label"
+
+  sudo umount "$partition"
+  if [ $? -eq 0 ]
+  then
+    echo "Unmounted $usb_label"
+  else
+    echo "Unmount Failed for $usb_label"
+    exit
+  fi
+
+  sudo udisksctl power-off -b "$partition"
+  if [ $? -eq 0 ]
+  then
+    rm -rf "/media/$usb_label"
+    echo "Powered off $usb_label"
+    echo "safe to eject"
+  else
+    echo "Poweroff failed for $usb_label"
+    exit
+  fi
+}
+
+poweroff() {
+  getPartition
+  [ -z "$partition" ] && echo "Empty Partition" && exit
+  confirm "Power off $partition"
+
+  sudo udisksctl power-off -b "$partition"
+  if [ $? -eq 0 ]
+  then
+    echo "Powered off $usb_label"
+    echo "safe to eject"
+  else
+    echo "Poweroff failed for $usb_label"
+    exit
+  fi
+}
+
+while getopts "m e p" flag
+do
+  case "${flag}" in
+    m) mountUsb;;
+    e) dismount;;
+    p) poweroff;;
+  esac
+done

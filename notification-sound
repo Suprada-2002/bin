@@ -1,0 +1,4 @@
+#!/bin/sh
+
+location="$XDG_DATA_HOME/sounds"
+paplay "$location/$(ls $location | shuf -n 1)"

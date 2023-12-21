@@ -1,0 +1,41 @@
+#!/bin/sh
+
+tmp_file="/tmp/tmp_info.txt"
+bluetooth_tmp_file="/tmp/bluetooth-deivce-info"
+wifi_tmp_file="/tmp/wifi_tmp_info.txt"
+
+echo "$USER @ $HOSTNAME" >> $tmp_file
+echo "----------------------------------------" >> $tmp_file
+
+# bluetooth 
+bluetoothctl info > $bluetooth_tmp_file
+name=$(cat $bluetooth_tmp_file | grep -e "Name" | cut -b 8-)
+
+printf "bluetooth: " >> $tmp_file
+if [[ -z "$name" ]]
+then
+ printf "🚫" >> $tmp_file
+else
+ battery=$(cat $bluetooth_tmp_file | grep -e "Battery Percentage" | grep -e "([0-9]*)" -o)
+ printf "$name $battery" >> $tmp_file
+fi
+printf "\n" >> $tmp_file
+
+# wifi
+nmcli device | cut -b9- > $wifi_tmp_file
+echo $(cat $wifi_tmp_file | grep -e "wifi" | sed -e "s/--//g" -e "s/disconnected/🚫/" -e "s/connected/✔ /") >> $tmp_file
+echo $(cat $wifi_tmp_file | grep -e "ethernet" | sed -e "s/--//g") >> $tmp_file
+
+# mocp song
+mocp_command="mocp -M $XDG_CONFIG_HOME/moc"
+song_name=$($mocp_command -Q "%file")
+if [ ! -z "$song_name" ]
+then
+  printf "\ncurrenting playing: $($mocp_command -Q '(%ct/%tt)')\n" >> $tmp_file
+  basename $song_name | sed -e "s/_/ /g" >> $tmp_file
+fi
+
+notify-send "$(cat $tmp_file)"
+rm $wifi_tmp_file
+rm $bluetooth_tmp_file
+rm $tmp_file

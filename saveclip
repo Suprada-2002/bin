@@ -1,0 +1,19 @@
+#!/bin/sh
+
+clipboard="$HOME/tmp/clipboard.txt"
+
+saveClip() {
+  echo "$(xclip -o)\n" >> $clipboard 
+  notify-send "save clipboard"
+  exit
+}
+
+while getopts "s" flag
+do
+    case "${flag}" in
+        s) saveClip;;
+    esac
+done
+
+line=$(cat $clipboard | dmenu -p "Select: " -l 10)
+echo "$line" | sed -e 's/\\n//' | xclip -selection clipboard

@@ -1,0 +1,30 @@
+#/bin/sh
+
+LIMIT="10"
+DATE=$(date +%D)
+DIR="$HOME/.local/share/.autocommiter"
+LOG="$DIR/log.txt"
+
+push(){
+  cd $DIR
+  update-remote
+  git add .
+  git commit -m $DATE --quiet
+  git push origin master --quiet
+}
+
+LINE=$(tail -n 1 $LOG)
+REC_DATE=$(echo $LINE | cut -d' ' -f1)
+
+if [ $DATE = $REC_DATE ]
+then
+  TIMES=$(echo $LINE | cut -d' ' -f2)
+  if [ $TIMES != $LIMIT ]
+  then
+    echo "$DATE $(( $TIMES + 1 ))" >> $LOG
+    push
+  fi
+else
+  echo "$DATE 1" >> $LOG
+  push
+fi
